@@ -38,6 +38,7 @@ async function run() {
       const updatedDoc = {
         $set: {
           quantity: updateBook.quantity,
+          sold: updateBook.sold,
         },
       };
       const result = await booksCollection.updateOne(

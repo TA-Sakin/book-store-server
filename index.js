@@ -27,7 +27,13 @@ async function run() {
     app.get("/homebooks", async (req, res) => {
       const query = {};
       const cursor = booksCollection.find(query);
-      const result = await cursor.limit(6).toArray();
+      const count = await booksCollection.estimatedDocumentCount();
+      let result;
+      if (count < 6) {
+        result = await cursor.toArray();
+      } else {
+        result = await cursor.limit(6).toArray();
+      }
       res.send(result);
     });
     app.get("/books/:id", async (req, res) => {
@@ -59,6 +65,12 @@ async function run() {
 
       const result = await booksCollection.insertOne(bookInfo);
       res.send({ success: "Book added successfully" });
+    });
+    app.delete("/books/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await booksCollection.deleteOne(query);
+      res.send(result);
     });
   } finally {
     // Ensures that the client will close when you finish/error

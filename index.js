@@ -24,6 +24,15 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
+    //get filtered data by email
+    app.get("/filteredbooks", async (req, res) => {
+      const email = req.query.email;
+      const query = { email };
+      const cursor = booksCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     app.get("/homebooks", async (req, res) => {
       const query = {};
       const cursor = booksCollection.find(query);

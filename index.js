@@ -48,6 +48,12 @@ async function run() {
       );
       res.send(result);
     });
+    app.post("/addbook", async (req, res) => {
+      const bookInfo = req.body;
+
+      const result = await booksCollection.insertOne(bookInfo);
+      res.send({ success: "Book added successfully" });
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();

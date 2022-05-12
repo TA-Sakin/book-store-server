@@ -24,6 +24,12 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
+    app.get("/homebooks", async (req, res) => {
+      const query = {};
+      const cursor = booksCollection.find(query);
+      const result = await cursor.limit(6).toArray();
+      res.send(result);
+    });
     app.get("/books/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };

@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 const app = express();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -14,25 +15,44 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+function verfiyJWT(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  const token = authHeader.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).send({ message: "Forbidden access" });
+    }
+    req.decoded = decoded;
+  });
+  next();
+}
+
 async function run() {
   try {
     await client.connect();
     const booksCollection = client.db("bookStore").collection("books");
+
+    //jwt auth
+    app.post("/login", async (req, res) => {
+      const user = req.body;
+      const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1d",
+      });
+      res.send({ accessToken });
+    });
+
+    //load data for inventory
     app.get("/books", async (req, res) => {
       const query = {};
       const cursor = booksCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
     });
-    //get filtered data by email
-    app.get("/filteredbooks", async (req, res) => {
-      const email = req.query.email;
-      const query = { email };
-      const cursor = booksCollection.find(query);
-      const result = await cursor.toArray();
-      res.send(result);
-    });
 
+    //load data for homepage
     app.get("/homebooks", async (req, res) => {
       const query = {};
       const cursor = booksCollection.find(query);
@@ -45,12 +65,30 @@ async function run() {
       }
       res.send(result);
     });
+
+    //get filtered data by email
+    app.get("/mybooks", verfiyJWT, async (req, res) => {
+      const decodedEmail = req.decoded.email;
+      const email = req.query.email;
+      if (decodedEmail === email) {
+        const query = { email };
+        const cursor = booksCollection.find(query);
+        const result = await cursor.toArray();
+        res.send(result);
+      } else {
+        res.status(403).send({ message: "Forbidden access" });
+      }
+    });
+
+    //load single data by id
     app.get("/books/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
       const book = await booksCollection.findOne(query);
       res.send(book);
     });
+
+    //update data
     app.put("/books/:id", async (req, res) => {
       const id = req.params.id;
       const updateBook = req.body;
@@ -69,12 +107,16 @@ async function run() {
       );
       res.send(result);
     });
+
+    //add new data
     app.post("/addbook", async (req, res) => {
       const bookInfo = req.body;
 
       const result = await booksCollection.insertOne(bookInfo);
       res.send({ success: "Book added successfully" });
     });
+
+    //delete data
     app.delete("/books/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
